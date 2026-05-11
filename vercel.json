@@ -1,0 +1,24 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "prisma generate && next build",
+  "env": {
+    "DATABASE_URL": "@database-url",
+    "DIRECT_URL": "@direct-url",
+    "NEXT_PUBLIC_SUPABASE_URL": "@supabase-url",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase-anon-key",
+    "SUPABASE_SERVICE_ROLE_KEY": "@supabase-service-role-key",
+    "OPENAI_API_KEY": "@openai-api-key",
+    "OPENAI_MODEL": "gpt-4o"
+  },
+  "functions": {
+    "src/app/api/chat/stream/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/submissions/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/ocr/route.ts": {
+      "maxDuration": 30
+    }
+  }
+}

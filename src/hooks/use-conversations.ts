@@ -1,0 +1,63 @@
+"use client"
+
+import { useState, useEffect, useCallback } from "react"
+import type { Conversation, Subject } from "@/types/database"
+
+interface UseConversationsOptions {
+  subject?: Subject
+}
+
+export function useConversations({ subject }: UseConversationsOptions = {}) {
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetch_ = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const url = `/api/user/conversations${subject ? `?subject=${subject}` : ""}`
+      const res = await fetch(url)
+      const json = await res.json()
+      if (!res.ok || json.error) throw new Error(json.error ?? "Failed to fetch")
+      setConversations(json.data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load history")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [subject])
+
+  useEffect(() => {
+    fetch_()
+  }, [fetch_])
+
+  // Prepend a new conversation to the local list (optimistic)
+  const prependConversation = useCallback((conv: Partial<Conversation> & { id: string; subject: Subject }) => {
+    setConversations((prev) => {
+      const exists = prev.some((c) => c.id === conv.id)
+      if (exists) return prev
+      return [
+        {
+          title: null,
+          isArchived: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          userId: "",
+          messages: [],
+          ...conv,
+        } as Conversation,
+        ...prev,
+      ]
+    })
+  }, [])
+
+  // Update title when AI generates it
+  const updateTitle = useCallback((id: string, title: string) => {
+    setConversations((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, title } : c))
+    )
+  }, [])
+
+  return { conversations, isLoading, error, refresh: fetch_, prependConversation, updateTitle }
+}

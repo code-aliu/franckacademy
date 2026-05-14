@@ -33,7 +33,7 @@ function ChatContent() {
   const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { conversations, isLoading: convsLoading, prependConversation, updateTitle } =
+  const { conversations, isLoading: convsLoading, prependConversation, updateTitle, deleteConversation, renameConversation } =
     useConversations({ subject: subject ?? undefined })
 
   const { messages, isLoading, error, sendMessage, activeConversationId, stopGeneration } =
@@ -85,6 +85,8 @@ function ChatContent() {
           isLoading={convsLoading}
           activeId={activeConversationId}
           onClose={() => setMobileHistoryOpen(false)}
+          onDelete={deleteConversation}
+          onRename={renameConversation}
         />
       </Sheet>
 
@@ -100,6 +102,8 @@ function ChatContent() {
             conversations={conversations}
             isLoading={convsLoading}
             activeId={activeConversationId}
+            onDelete={deleteConversation}
+            onRename={renameConversation}
           />
         )}
       </div>

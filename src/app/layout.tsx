@@ -21,12 +21,19 @@ export const metadata: Metadata = {
   description:
     "Your personal AI tutor for secondary school. Get step-by-step help with Mathematics, Physics, Chemistry, and English.",
   keywords: ["AI tutor", "homework help", "secondary school", "exam prep", "step-by-step"],
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "FranckAcademy",
+  },
 }
 
 export const viewport: Viewport = {
   themeColor: "#4f46e5",
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
 }
 
 export default function RootLayout({

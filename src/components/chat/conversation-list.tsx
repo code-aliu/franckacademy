@@ -11,13 +11,16 @@ import {
   BookOpen,
   Search,
   X,
+  Trash2,
+  Pencil,
+  Check,
 } from "lucide-react"
 import { cn, formatRelativeTime, getSubjectLabel } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { Conversation, Subject } from "@/types/database"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef, useEffect } from "react"
 
 const subjectIcons: Record<Subject, React.ElementType> = {
   MATHEMATICS: Calculator,
@@ -40,6 +43,8 @@ interface ConversationListProps {
   isLoading: boolean
   activeId?: string
   onClose?: () => void
+  onDelete?: (id: string) => void
+  onRename?: (id: string, title: string) => void
 }
 
 export function ConversationList({
@@ -47,10 +52,15 @@ export function ConversationList({
   isLoading,
   activeId,
   onClose,
+  onDelete,
+  onRename,
 }: ConversationListProps) {
   const pathname = usePathname()
   const [search, setSearch] = useState("")
   const [subjectFilter, setSubjectFilter] = useState<Subject | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState("")
+  const editInputRef = useRef<HTMLInputElement>(null)
 
   const filtered = useMemo(() => {
     return conversations.filter((c) => {
@@ -62,6 +72,25 @@ export function ConversationList({
       return matchesSearch && matchesSubject
     })
   }, [conversations, search, subjectFilter])
+
+  useEffect(() => {
+    if (editingId) editInputRef.current?.focus()
+  }, [editingId])
+
+  function startEdit(conv: Conversation) {
+    setEditingId(conv.id)
+    setEditValue(conv.title ?? getSubjectLabel(conv.subject) + " session")
+  }
+
+  function commitEdit(id: string) {
+    const trimmed = editValue.trim()
+    if (trimmed && onRename) onRename(id, trimmed)
+    setEditingId(null)
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -152,33 +181,79 @@ export function ConversationList({
           filtered.map((conv) => {
             const Icon = subjectIcons[conv.subject]
             const colorClass = subjectColors[conv.subject]
-            const isActive =
-              activeId === conv.id || pathname === `/chat/${conv.id}`
+            const isActive = activeId === conv.id || pathname === `/chat/${conv.id}`
+            const isEditing = editingId === conv.id
 
             return (
-              <Link
+              <div
                 key={conv.id}
-                href={`/chat/${conv.id}`}
-                onClick={onClose}
                 className={cn(
-                  "flex items-start gap-2.5 rounded-lg px-2.5 py-2.5 transition-colors group",
-                  isActive
-                    ? "bg-primary/10 text-foreground"
-                    : "hover:bg-muted/60 text-foreground"
+                  "group relative flex items-start gap-2.5 rounded-lg px-2.5 py-2.5 transition-colors",
+                  isActive ? "bg-primary/10" : "hover:bg-muted/60"
                 )}
               >
                 <div className={cn("mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md", colorClass)}>
                   <Icon className="h-3.5 w-3.5" />
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-medium leading-tight">
-                    {conv.title ?? `${getSubjectLabel(conv.subject)} session`}
-                  </p>
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">
-                    {formatRelativeTime(conv.updatedAt)}
-                  </p>
-                </div>
-              </Link>
+
+                {isEditing ? (
+                  <div className="flex flex-1 items-center gap-1 min-w-0">
+                    <input
+                      ref={editInputRef}
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitEdit(conv.id)
+                        if (e.key === "Escape") cancelEdit()
+                      }}
+                      className="flex-1 min-w-0 rounded border border-ring bg-background px-1.5 py-0.5 text-xs text-foreground outline-none"
+                    />
+                    <button onClick={() => commitEdit(conv.id)} className="shrink-0 text-primary hover:text-primary/80">
+                      <Check className="h-3.5 w-3.5" />
+                    </button>
+                    <button onClick={cancelEdit} className="shrink-0 text-muted-foreground hover:text-foreground">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <Link
+                      href={`/chat/${conv.id}`}
+                      onClick={onClose}
+                      className="flex-1 min-w-0"
+                    >
+                      <p className="truncate text-xs font-medium leading-tight text-foreground">
+                        {conv.title ?? `${getSubjectLabel(conv.subject)} session`}
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">
+                        {formatRelativeTime(conv.updatedAt)}
+                      </p>
+                    </Link>
+
+                    {/* Hover actions */}
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-0.5 bg-background/90 rounded-md border px-0.5 py-0.5 shadow-sm">
+                      {onRename && (
+                        <button
+                          onClick={() => startEdit(conv)}
+                          className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors"
+                          title="Rename"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                      )}
+                      {onDelete && (
+                        <button
+                          onClick={() => onDelete(conv.id)}
+                          className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-destructive transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
             )
           })
         )}

@@ -31,7 +31,7 @@ export default function ConversationPage() {
   const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { conversations, isLoading: convsLoading, updateTitle } = useConversations()
+  const { conversations, isLoading: convsLoading, updateTitle, deleteConversation, renameConversation } = useConversations()
 
   const { messages, isLoading, error, sendMessage, loadConversation, stopGeneration } = useChat({
     conversationId: sessionId,
@@ -82,6 +82,8 @@ export default function ConversationPage() {
           isLoading={convsLoading}
           activeId={sessionId}
           onClose={() => setMobileHistoryOpen(false)}
+          onDelete={deleteConversation}
+          onRename={renameConversation}
         />
       </Sheet>
 
@@ -97,6 +99,8 @@ export default function ConversationPage() {
             conversations={conversations}
             isLoading={convsLoading}
             activeId={sessionId}
+            onDelete={deleteConversation}
+            onRename={renameConversation}
           />
         )}
       </div>

@@ -52,12 +52,45 @@ export function useConversations({ subject }: UseConversationsOptions = {}) {
     })
   }, [])
 
-  // Update title when AI generates it
   const updateTitle = useCallback((id: string, title: string) => {
     setConversations((prev) =>
       prev.map((c) => (c.id === id ? { ...c, title } : c))
     )
   }, [])
 
-  return { conversations, isLoading, error, refresh: fetch_, prependConversation, updateTitle }
+  const deleteConversation = useCallback(async (id: string) => {
+    setConversations((prev) => prev.filter((c) => c.id !== id))
+    try {
+      const res = await fetch(`/api/chat/${id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Delete failed")
+    } catch {
+      await fetch_() // re-sync on failure
+    }
+  }, [fetch_])
+
+  const renameConversation = useCallback(async (id: string, title: string) => {
+    setConversations((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, title } : c))
+    )
+    try {
+      await fetch(`/api/chat/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      })
+    } catch {
+      await fetch_()
+    }
+  }, [fetch_])
+
+  return {
+    conversations,
+    isLoading,
+    error,
+    refresh: fetch_,
+    prependConversation,
+    updateTitle,
+    deleteConversation,
+    renameConversation,
+  }
 }

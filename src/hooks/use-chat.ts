@@ -8,11 +8,12 @@ interface UseChatOptions {
   conversationId?: string
   subject: Subject
   onNewConversation?: (id: string) => void
+  onTitleUpdate?: (id: string, title: string) => void
 }
 
 const STREAMING_MSG_PREFIX = "streaming-"
 
-export function useChat({ conversationId, subject, onNewConversation }: UseChatOptions) {
+export function useChat({ conversationId, subject, onNewConversation, onTitleUpdate }: UseChatOptions) {
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -121,6 +122,7 @@ export function useChat({ conversationId, subject, onNewConversation }: UseChatO
       content?: string
       assistantMessageId?: string
       topics?: string[]
+      conversationTitle?: string
       message?: string
     },
     tempUserId: string,
@@ -163,13 +165,15 @@ export function useChat({ conversationId, subject, onNewConversation }: UseChatO
         break
 
       case "done":
-        // Replace temp assistant ID with real DB ID
         if (event.assistantMessageId) {
           setMessages((prev) =>
             prev.map((m) =>
               m.id === tempAssistantId ? { ...m, id: event.assistantMessageId! } : m
             )
           )
+        }
+        if (event.conversationTitle && event.conversationId) {
+          onTitleUpdate?.(event.conversationId, event.conversationTitle)
         }
         break
 

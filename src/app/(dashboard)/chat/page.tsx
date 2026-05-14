@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect, useRef } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import {
   MessageSquare, Camera, X, AlertCircle, Loader2,
-  PanelLeftOpen, PanelLeftClose,
+  PanelLeftOpen, PanelLeftClose, History,
 } from "lucide-react"
 import { useChat } from "@/hooks/use-chat"
 import { useOCR } from "@/hooks/use-ocr"
@@ -17,6 +17,7 @@ import { ConversationList } from "@/components/chat/conversation-list"
 import { ImageUpload } from "@/components/upload/image-upload"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Sheet } from "@/components/ui/sheet"
 import { getSubjectLabel, getSubjectColor, cn } from "@/lib/utils"
 import type { Subject } from "@/types/database"
 
@@ -29,9 +30,10 @@ function ChatContent() {
   const [showUpload, setShowUpload] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { conversations, isLoading: convsLoading, prependConversation } =
+  const { conversations, isLoading: convsLoading, prependConversation, updateTitle } =
     useConversations({ subject: subject ?? undefined })
 
   const { messages, isLoading, error, sendMessage, activeConversationId, stopGeneration } =
@@ -43,6 +45,7 @@ function ChatContent() {
           prependConversation({ id, subject })
         }
       },
+      onTitleUpdate: updateTitle,
     })
 
   const { isProcessing, processImage } = useOCR()
@@ -75,11 +78,21 @@ function ChatContent() {
 
   return (
     <div className="flex h-full overflow-hidden">
-      {/* Conversation sidebar — desktop always visible, mobile overlay */}
+      {/* Mobile history drawer */}
+      <Sheet open={mobileHistoryOpen} onClose={() => setMobileHistoryOpen(false)}>
+        <ConversationList
+          conversations={conversations}
+          isLoading={convsLoading}
+          activeId={activeConversationId}
+          onClose={() => setMobileHistoryOpen(false)}
+        />
+      </Sheet>
+
+      {/* Desktop conversation sidebar */}
       <div
         className={cn(
-          "flex-shrink-0 border-r bg-sidebar transition-all duration-200",
-          sidebarOpen ? "w-64" : "w-0 overflow-hidden border-0"
+          "hidden md:flex flex-shrink-0 border-r bg-sidebar transition-all duration-200",
+          sidebarOpen ? "md:w-64" : "md:w-0 overflow-hidden border-0"
         )}
       >
         {sidebarOpen && (
@@ -99,7 +112,7 @@ function ChatContent() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-muted-foreground"
+              className="hidden md:flex h-8 w-8 text-muted-foreground"
               onClick={() => setSidebarOpen(!sidebarOpen)}
               title={sidebarOpen ? "Hide history" : "Show history"}
             >
@@ -107,6 +120,15 @@ function ChatContent() {
                 ? <PanelLeftClose className="h-4 w-4" />
                 : <PanelLeftOpen className="h-4 w-4" />
               }
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 md:hidden"
+              onClick={() => setMobileHistoryOpen(true)}
+              title="History"
+            >
+              <History className="h-4 w-4" />
             </Button>
             <Badge className={`${getSubjectColor(subject)} border-0 text-xs`}>
               {getSubjectLabel(subject)}

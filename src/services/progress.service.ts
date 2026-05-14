@@ -53,3 +53,40 @@ export async function createUserWithProfile(data: {
     include: { profile: true, progress: true },
   })
 }
+
+export async function updateUser(
+  userId: string,
+  data: { fullName?: string; grade?: string | null }
+) {
+  return prisma.user.update({
+    where: { id: userId },
+    data,
+    include: { profile: true, progress: true },
+  })
+}
+
+export async function updateStreakIfNeeded(userId: string) {
+  const profile = await prisma.studentProfile.findUnique({ where: { userId } })
+  if (!profile) return
+
+  const now = new Date()
+  const last = profile.lastActiveAt
+  const msSinceMidnight = (d: Date) => {
+    const local = new Date(d)
+    return local.getHours() * 3600000 + local.getMinutes() * 60000 + local.getSeconds() * 1000
+  }
+  const daysBetween = Math.floor(
+    (now.getTime() - msSinceMidnight(now) - (last.getTime() - msSinceMidnight(last))) /
+      86400000
+  )
+
+  let newStreak = profile.streakDays
+  if (daysBetween === 0) return // already logged in today
+  if (daysBetween === 1) newStreak = profile.streakDays + 1
+  else newStreak = 1 // streak broken
+
+  await prisma.studentProfile.update({
+    where: { userId },
+    data: { streakDays: newStreak, lastActiveAt: now },
+  })
+}

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import {
-  AlertCircle, ArrowLeft, PanelLeftOpen, PanelLeftClose, X,
+  AlertCircle, ArrowLeft, PanelLeftOpen, PanelLeftClose, X, History,
 } from "lucide-react"
 import { useChat } from "@/hooks/use-chat"
 import { useConversations } from "@/hooks/use-conversations"
@@ -14,6 +14,7 @@ import { ConversationList } from "@/components/chat/conversation-list"
 import { ImageUpload } from "@/components/upload/image-upload"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Sheet } from "@/components/ui/sheet"
 import { ChatSkeleton } from "@/components/shared/loading-skeleton"
 import { getSubjectLabel, getSubjectColor, cn } from "@/lib/utils"
 import type { Subject } from "@/types/database"
@@ -27,13 +28,15 @@ export default function ConversationPage() {
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [initialLoading, setInitialLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { conversations, isLoading: convsLoading } = useConversations()
+  const { conversations, isLoading: convsLoading, updateTitle } = useConversations()
 
   const { messages, isLoading, error, sendMessage, loadConversation, stopGeneration } = useChat({
     conversationId: sessionId,
     subject,
+    onTitleUpdate: updateTitle,
   })
 
   useEffect(() => {
@@ -72,11 +75,21 @@ export default function ConversationPage() {
 
   return (
     <div className="flex h-full overflow-hidden">
-      {/* Conversation sidebar */}
+      {/* Mobile history drawer */}
+      <Sheet open={mobileHistoryOpen} onClose={() => setMobileHistoryOpen(false)}>
+        <ConversationList
+          conversations={conversations}
+          isLoading={convsLoading}
+          activeId={sessionId}
+          onClose={() => setMobileHistoryOpen(false)}
+        />
+      </Sheet>
+
+      {/* Desktop conversation sidebar */}
       <div
         className={cn(
-          "flex-shrink-0 border-r bg-sidebar transition-all duration-200",
-          sidebarOpen ? "w-64" : "w-0 overflow-hidden border-0"
+          "hidden md:flex flex-shrink-0 border-r bg-sidebar transition-all duration-200",
+          sidebarOpen ? "md:w-64" : "md:w-0 overflow-hidden border-0"
         )}
       >
         {sidebarOpen && (
@@ -96,13 +109,21 @@ export default function ConversationPage() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-muted-foreground"
+              className="hidden md:flex h-8 w-8 text-muted-foreground"
               onClick={() => setSidebarOpen(!sidebarOpen)}
             >
               {sidebarOpen
                 ? <PanelLeftClose className="h-4 w-4" />
                 : <PanelLeftOpen className="h-4 w-4" />
               }
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 md:hidden"
+              onClick={() => setMobileHistoryOpen(true)}
+            >
+              <History className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"

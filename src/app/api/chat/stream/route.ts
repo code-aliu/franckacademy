@@ -11,7 +11,7 @@ import type { Subject } from "@/types/database"
 type StreamEvent =
   | { type: "init"; conversationId: string; userMessageId: string }
   | { type: "token"; content: string }
-  | { type: "done"; assistantMessageId: string; topics: string[] }
+  | { type: "done"; conversationId: string; assistantMessageId: string; topics: string[]; conversationTitle?: string }
   | { type: "error"; message: string }
 
 function encodeEvent(event: StreamEvent): string {
@@ -134,14 +134,14 @@ export async function POST(request: Request) {
           },
         })
 
-        // 7. Auto-title on first exchange
+        // 7. Auto-title on first exchange — await so we can send it to the client
+        let conversationTitle: string | undefined
         if (conversation.messages.length === 0 && !conversation.title) {
-          generateConversationTitle(content.trim(), subject).then((title) =>
-            prisma.conversation.update({
-              where: { id: conversation.id },
-              data: { title },
-            })
-          )
+          conversationTitle = await generateConversationTitle(content.trim(), subject)
+          await prisma.conversation.update({
+            where: { id: conversation.id },
+            data: { title: conversationTitle },
+          })
         }
 
         // 8. Update conversation timestamp
@@ -153,7 +153,13 @@ export async function POST(request: Request) {
         // 9. Update progress (fire-and-forget)
         updateProgress(dbUser.id, subject, detectedTopics)
 
-        send({ type: "done", assistantMessageId: assistantMessage.id, topics: detectedTopics })
+        send({
+          type: "done",
+          conversationId: conversation.id,
+          assistantMessageId: assistantMessage.id,
+          topics: detectedTopics,
+          conversationTitle,
+        })
         controller.close()
       } catch (err) {
         console.error("[POST /api/chat/stream]", err)

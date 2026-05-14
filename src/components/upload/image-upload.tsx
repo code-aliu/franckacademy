@@ -1,8 +1,7 @@
 "use client"
 
 import { useCallback, useState } from "react"
-import { Upload, X, FileImage, Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Upload, X, FileImage } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 
@@ -12,9 +11,10 @@ interface ImageUploadProps {
   subject?: string
 }
 
-export function ImageUpload({ onUploadComplete, onError, subject }: ImageUploadProps) {
+export function ImageUpload({ onUploadComplete, onError, subject: _subject }: ImageUploadProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [progress, setProgress] = useState(0)
   const [preview, setPreview] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string>("")
 
@@ -31,26 +31,43 @@ export function ImageUpload({ onUploadComplete, onError, subject }: ImageUploadP
       }
 
       setIsUploading(true)
+      setProgress(0)
       setFileName(file.name)
-
-      // Show preview immediately
-      const objectUrl = URL.createObjectURL(file)
-      setPreview(objectUrl)
+      setPreview(URL.createObjectURL(file))
 
       try {
         const supabase = createClient()
-        const { data: { user } } = await supabase.auth.getUser()
-
-        if (!user) throw new Error("Not authenticated")
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) throw new Error("Not authenticated")
 
         const ext = file.name.split(".").pop()
-        const path = `${user.id}/${Date.now()}.${ext}`
+        const path = `${session.user.id}/${Date.now()}.${ext}`
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+        const uploadUrl = `${supabaseUrl}/storage/v1/object/homework-images/${path}`
 
-        const { error: uploadError } = await supabase.storage
-          .from("homework-images")
-          .upload(path, file, { upsert: false })
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest()
+          xhr.open("POST", uploadUrl)
+          xhr.setRequestHeader("Authorization", `Bearer ${session.access_token}`)
+          xhr.setRequestHeader("Content-Type", file.type)
+          xhr.setRequestHeader("x-upsert", "false")
 
-        if (uploadError) throw uploadError
+          xhr.upload.addEventListener("progress", (e) => {
+            if (e.lengthComputable) {
+              setProgress(Math.round((e.loaded / e.total) * 100))
+            }
+          })
+
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve()
+            } else {
+              reject(new Error(xhr.responseText || "Upload failed"))
+            }
+          }
+          xhr.onerror = () => reject(new Error("Network error during upload"))
+          xhr.send(file)
+        })
 
         const { data: { publicUrl } } = supabase.storage
           .from("homework-images")
@@ -64,6 +81,7 @@ export function ImageUpload({ onUploadComplete, onError, subject }: ImageUploadP
         setFileName("")
       } finally {
         setIsUploading(false)
+        setProgress(0)
       }
     },
     [onUploadComplete, onError]
@@ -98,10 +116,17 @@ export function ImageUpload({ onUploadComplete, onError, subject }: ImageUploadP
           className="w-full max-h-64 object-contain"
         />
         {isUploading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              Uploading...
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/70 backdrop-blur-sm">
+            <div className="w-48 space-y-1.5">
+              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-150"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <p className="text-center text-xs font-medium text-foreground">
+                {progress < 100 ? `Uploading… ${progress}%` : "Processing…"}
+              </p>
             </div>
           </div>
         )}

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { getUserBySupabaseId, createUserWithProfile } from "@/services/progress.service"
+import { getUserBySupabaseId, createUserWithProfile, updateStreakIfNeeded } from "@/services/progress.service"
 import { Sidebar } from "@/components/layout/sidebar"
 import { MobileNav } from "@/components/layout/mobile-nav"
 
@@ -27,6 +27,9 @@ export default async function DashboardLayout({
       grade: user.user_metadata?.grade,
     })
   }
+
+  // Fire-and-forget streak update (don't block render)
+  updateStreakIfNeeded(dbUser.id).catch(() => {})
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

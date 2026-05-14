@@ -4,6 +4,7 @@ import { getUserBySupabaseId } from "@/services/progress.service"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { ProfileEditForm } from "@/components/profile/profile-edit-form"
 import { formatDate } from "@/lib/utils"
 
 export default async function ProfilePage() {
@@ -52,8 +53,13 @@ export default async function ProfilePage() {
 
       <Card className="shadow-sm">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Account details</CardTitle>
-          <CardDescription>Basic information about your account</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base">Account details</CardTitle>
+              <CardDescription>Basic information about your account</CardDescription>
+            </div>
+            <ProfileEditForm initialName={dbUser.fullName} initialGrade={dbUser.grade} />
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {[
